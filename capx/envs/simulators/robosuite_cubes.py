@@ -120,7 +120,17 @@ class FrankaRobosuiteCubesLowLevel(RobosuiteBaseEnv):
         self, *, seed: int | None = None, options: dict[str, Any] | None = None
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         if seed is not None:
-            self._rng = np.random.default_rng(seed)
+            # The trial runner passes the trial id here as the seed.  Previously
+            # only the wrapper-local RNG was reset, while Robosuite and its
+            # placement sampler continued from their own RNG state.  Re-seed
+            # every RNG that participates in reset so the same trial id maps to
+            # the same physical initialization across repeated resets and tiers.
+            rng = np.random.default_rng(seed)
+            self._rng = rng
+            self.robosuite_env.rng = rng
+            placement_initializer = getattr(self.robosuite_env, "placement_initializer", None)
+            if placement_initializer is not None and hasattr(placement_initializer, "rng"):
+                placement_initializer.rng = rng
 
         self.robosuite_env.reset()
         # Adjust initial orientation
