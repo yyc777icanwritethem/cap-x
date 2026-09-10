@@ -8,6 +8,10 @@ register_env("franka_real_low_level", FrankaRealLowLevel)
 # NOTE: Can only have one of Robosuite or LIBERO installed at a time!
 # Using Robosuite run: uv sync --extra robosuite
 try:
+    import functools
+
+    import numpy as np
+
     from .robosuite_cube_lift import FrankaRobosuiteCubeLiftLowLevel
     from .robosuite_cubes import FrankaRobosuiteCubesLowLevel
     from .robosuite_cubes_restack import FrankaRobosuiteCubesRestackLowLevel
@@ -16,6 +20,74 @@ try:
     from .robosuite_two_arm_lift import RobosuiteTwoArmLiftEnv
     from .robosuite_nut_assembly import FrankaRobosuiteNutAssembly
     from .robosuite_nut_assembly import FrankaRobosuiteNutAssemblyVisual
+
+    def _set_sampler_rng(sampler, rng):
+        """Propagate one Generator through Robosuite placement samplers."""
+        if sampler is None:
+            return
+        if hasattr(sampler, "rng"):
+            sampler.rng = rng
+
+        children = getattr(sampler, "samplers", None)
+        if isinstance(children, dict):
+            children = children.values()
+        if children is not None:
+            for child in children:
+                _set_sampler_rng(child, rng)
+
+    def _install_seeded_robosuite_reset(env_cls):
+        """Make reset(seed=...) control Robosuite's physical randomization.
+
+        CaP-X wrappers historically reset only their wrapper-local ``_rng``.
+        Robosuite object placement, robot initialization noise, and Wipe arena
+        randomization use ``robosuite_env.rng`` (or objects that captured that
+        Generator), so the trial seed did not actually determine the physical
+        initial state.  Wrap each Robosuite task reset in one place so all
+        benchmark tiers share the same seed semantics.
+        """
+        original_reset = env_cls.reset
+        if getattr(original_reset, "_capx_seeded_reset", False):
+            return
+
+        @functools.wraps(original_reset)
+        def seeded_reset(self, *, seed=None, options=None):
+            if seed is not None:
+                rng = np.random.default_rng(seed)
+                self._rng = rng
+
+                robosuite_env = getattr(self, "robosuite_env", None)
+                if robosuite_env is not None:
+                    # Robosuite passes this RNG to robot reset and task model
+                    # randomization.  Setting it before reset also covers hard
+                    # resets that rebuild placement samplers / arenas.
+                    robosuite_env.seed = seed
+                    robosuite_env.rng = rng
+
+                    # Also cover soft-reset / already-constructed sampler paths.
+                    _set_sampler_rng(
+                        getattr(robosuite_env, "placement_initializer", None), rng
+                    )
+                    model = getattr(robosuite_env, "model", None)
+                    arena = getattr(model, "mujoco_arena", None)
+                    if arena is not None and hasattr(arena, "rng"):
+                        arena.rng = rng
+
+            return original_reset(self, seed=seed, options=options)
+
+        seeded_reset._capx_seeded_reset = True
+        env_cls.reset = seeded_reset
+
+    for _robosuite_env_cls in (
+        FrankaRobosuiteCubeLiftLowLevel,
+        FrankaRobosuiteCubesLowLevel,
+        FrankaRobosuiteCubesRestackLowLevel,
+        FrankaRobosuiteSpillWipeLowLevel,
+        RobosuiteHandoverEnv,
+        RobosuiteTwoArmLiftEnv,
+        FrankaRobosuiteNutAssembly,
+        FrankaRobosuiteNutAssemblyVisual,
+    ):
+        _install_seeded_robosuite_reset(_robosuite_env_cls)
 
     register_env("franka_robosuite_cube_lift_low_level", FrankaRobosuiteCubeLiftLowLevel)
     register_env("franka_robosuite_cubes_low_level", FrankaRobosuiteCubesLowLevel)
