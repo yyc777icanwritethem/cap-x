@@ -6,7 +6,7 @@ env:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
     low_level: two_arm_lift_robosuite  # Registry name for low-level env
     apis:
-      - FrankaControlApiReducedBimanual
+      - FrankaTwoArmLiftApiReduced
     prompt: |
       You are controlling a two-arm Franka Emika robot system on opposite sides of the table with API described below.
       Goal: The two arms should coordinate to lift a pot. Arm 0 should grasp handle 0, and Arm 1 should grasp handle 1. Then both arms should lift the pot up at the same height.
@@ -43,15 +43,21 @@ env:
       - The word 'FINISH' if the task appears to be complete
 
 api_servers:
-  - _target_: capx.serving.launch_sam3_server.main
+  - _target_: capx.serving.launch_owlvit_server.main
     device: cuda
-    port: 8114
+    port: 8117
     host: 127.0.0.1
+    model_name: google/owlv2-large-patch14-ensemble
+
+  - _target_: capx.serving.launch_sam2_server.main
+    device: cuda
+    port: 8113
+    host: 127.0.0.1
+    model_name: facebook/sam2.1-hiera-large
 
   - _target_: capx.serving.launch_contact_graspnet_server.main
     port: 8115
     host: 127.0.0.1
-
     
   - _target_: capx.serving.launch_pyroki_server.main
     port: 8116
