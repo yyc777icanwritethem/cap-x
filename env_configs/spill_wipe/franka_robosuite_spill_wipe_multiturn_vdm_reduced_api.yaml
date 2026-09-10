@@ -7,7 +7,7 @@ env:
     low_level: franka_robosuite_spill_wipe_low_level
     privileged: false
     apis:
-      - FrankaControlApiReducedSpillWipe
+      - FrankaControlSpillWipeApiReduced
     # prompt: |
     #   You are controlling a Franka Emika robot with API described below.
     #   Goal: wipe up the brown spill. 
