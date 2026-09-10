@@ -102,7 +102,10 @@ def close_env(env: Any) -> None:
 
 
 def make_env(factory: Callable[..., Any], privileged: bool) -> Any:
-    return factory(privileged=privileged, enable_render=False, viser_debug=False)
+    # Match the benchmark's normal CodeExecEnvConfig default (enable_render=True).
+    # This also keeps the two-arm lift wrapper on its supported single-camera path;
+    # the physical-state fingerprint below still excludes cameras and pixels.
+    return factory(privileged=privileged, enable_render=True, viser_debug=False)
 
 
 def audit_task(name: str, factory: Callable[..., Any], seeds: list[int]) -> dict[str, Any]:
