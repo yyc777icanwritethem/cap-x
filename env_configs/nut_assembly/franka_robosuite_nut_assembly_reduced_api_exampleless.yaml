@@ -5,7 +5,7 @@ env:
   cfg:
     _target_: capx.envs.tasks.base.CodeExecEnvConfig
     low_level: franka_robosuite_nut_assembly_low_level_visual  # Use Robosuite instead of MuJoCo!
-    privileged: true
+    privileged: false
     apis:
       - FrankaControlNutAssemblyApiReducedExampleless
     # prompt is inherited from FrankaNutAssemblyCodeEnv class default
