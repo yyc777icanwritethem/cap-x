@@ -7,7 +7,7 @@ env:
     low_level: franka_robosuite_nut_assembly_low_level_visual  # Use Robosuite instead of MuJoCo!
     privileged: true
     apis:
-      - FrankaControlApiReduced
+      - FrankaControlNutAssemblyApiReduced
     prompt: |
       You are controlling a Franka Emika robot with API described below.
       Goal: grasp and insert the `brown square nut` onto the `brown square block`.
@@ -44,10 +44,13 @@ api_servers:
     robot: panda_description
     target_link: panda_hand
 
-
   - _target_: capx.serving.launch_sam3_server.main
     device: cuda
     port: 8114
+    host: 127.0.0.1
+
+  - _target_: capx.serving.launch_contact_graspnet_server.main
+    port: 8115
     host: 127.0.0.1
 
 record_video: true
